@@ -1,0 +1,10 @@
+{
+	"name": "philippgithub/php-cache",
+	"description": "",
+	"autoload": {
+		"files": ["Cache.php"]
+	},
+	"require": {
+		"php": ">=5.6"
+	}
+}
