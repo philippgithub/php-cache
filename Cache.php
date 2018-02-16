@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.0";
+		const VERSION = "1.1";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
@@ -367,8 +367,8 @@ if(!class_exists("CACHE")){
 			$key = self::validateKey($key);
 
 
-			if(self::has($key)){
-				return self::get($key);
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
 			}
 			else{
 				$value = glob($dir);
@@ -393,8 +393,8 @@ if(!class_exists("CACHE")){
 			$key = self::validateKey($key);
 
 
-			if(self::has($key)){
-				return self::get($key);
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
 			}
 			else{
 				$value = self::$db->fetchColumn($statement, $bind, $column);
@@ -419,8 +419,8 @@ if(!class_exists("CACHE")){
 			$key = self::validateKey($key);
 
 
-			if(self::has($key)){
-				return self::get($key);
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
 			}
 			else{
 				$value = self::$db->fetchAssoc($statement, $bind);
@@ -445,8 +445,8 @@ if(!class_exists("CACHE")){
 			$key = self::validateKey($key);
 
 
-			if(self::has($key)){
-				return self::get($key);
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
 			}
 			else{
 				$value = self::$db->fetchAll($statement, $bind);
@@ -470,8 +470,8 @@ if(!class_exists("CACHE")){
 			$key = self::validateKey($key);
 
 
-			if(self::has($key)){
-				return self::get($key);
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
 			}
 			else{
 				$value = (self::$db->executeQuery($statement)->rowCount() == 1) ? true : false;
