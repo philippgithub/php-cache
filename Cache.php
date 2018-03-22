@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.1";
+		const VERSION = "1.2";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
@@ -238,6 +238,22 @@ if(!class_exists("CACHE")){
 
 			if(self::$config["use.memcached"] !== false){
 				return self::$memcached->add($key, $value, $time);
+			}
+
+			return false;
+		}
+#####################################################################################################################
+		public static function pull($key){
+			$key 	= self::validateKey($key);
+
+			if(self::$config["use.memcached"] !== false){
+				$result = self::$memcached->get($key);
+				if(self::$memcached->getResultCode() !== \Memcached::RES_NOTFOUND){
+					$response = self::decode($result, true);
+					self::delete($key);
+
+					return $response;
+				}
 			}
 
 			return false;
