@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.2";
+		const VERSION = "1.3";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
@@ -114,7 +114,7 @@ if(!class_exists("CACHE")){
 		public static function validateKey($key){
 			$key = str_replace(	["ä",  "Ä",  "ö",  "Ö",  "ü",  "Ü",  "ß",  "é", "è", "É", "È"],
 								["ae", "AE", "oe", "OE", "ue", "UE", "ss", "e", "e", "E", "E"], $key);
-			$key = preg_replace("/[^a-zA-Z0-9 \.\,\-\_\/]/", " ", $key);
+			$key = preg_replace("/[^a-zA-Z0-9 \.\,\-\_\/\:]/", " ", $key);
 			$key = str_replace([" ", "\t", "\n", "\r"], "", $key);
 			$key = trim($key);
 
