@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.3";
+		const VERSION = "1.4";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
