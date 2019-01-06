@@ -395,6 +395,27 @@ if(!class_exists("CACHE")){
 			}
 		}
 #####################################################################################################################
+		public static function file_get_contents($file, $time=false, $key=false){
+			$time 	= self::validateTime($time);
+
+			if($key === false or empty($key)){
+				$key = "file_get_contents/".sha1($dir);
+			}
+			$key = self::validateKey($key);
+
+
+			if(self::has($key) and ($get = self::get($key)) !== false){
+				return $get;
+			}
+			else{
+				$value = @file_get_contents($file);
+				if($value !== false){
+					self::set($key, $value, $time);
+				}
+				return $value;
+			}
+		}
+#####################################################################################################################
 		public static function fetchColumn($statement, $bind=false, $column=0, $time=false, $key=false){
 			if(self::$db === null){
 				throw new Exception("Database instance required.");
