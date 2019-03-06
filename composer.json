@@ -1,5 +1,5 @@
 {
-	"name": "philippgithub/php-cache",
+	"name": "madeinhamburg/php-cache",
 	"description": "",
 	"autoload": {
 		"files": ["Cache.php"]
