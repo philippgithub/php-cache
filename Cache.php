@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.6";
+		const VERSION = "1.7";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
@@ -300,94 +300,87 @@ if(!class_exists("CACHE")){
 					}
 				}
 
+				foreach(self::$memcached->getMulti([$key], \Memcached::GET_PRESERVE_ORDER) as $entry){
+					if(substr($entry, 0, strlen($key)) === $key){
+						$entries[] = $entry;
+					}
+				}
+
+				foreach(self::$memcached->getAllKeys() as $entry){
+					if(substr($entry, 0, strlen($key)) === $key){
+						$entries[] = $entry;
+					}
+				}
 
 
-$mem = @fsockopen(self::$config["memcached.host"], self::$config["memcached.port"]);
-if ($mem === false)
-{
-	return -1;
-}
 
-// retrieve distinct slab
-$r = @fwrite($mem, 'stats items' . chr(10));
-if ($r === false)
-{
-	return -2;
-}
+				$mem = @fsockopen(self::$config["memcached.host"], self::$config["memcached.port"]);
+				if ($mem !== false) {
+					// retrieve distinct slab
+					$r = @fwrite($mem, 'stats items'.chr(10));
+					if ($r !== false) {
+						$slab = [];
+						while (($l = @fgets($mem, 1024)) !== false) {
+							// finished?
+							$l = trim($l);
+							if ($l == 'END') {
+								break;
+							}
 
-$slab = [];
-while (($l = @fgets($mem, 1024)) !== false)
-{
-	// finished?
-	$l = trim($l);
-	if ($l == 'END')
-	{
-		break;
-	}
+							$m = [];
+							// <STAT items:22:evicted_nonzero 0>
+							$r = preg_match('/^STAT\sitems\:(\d+)\:/', $l, $m);
+							if ($r == 1) {
+								$a_slab = $m[1];
 
-	$m = [];
-	// <STAT items:22:evicted_nonzero 0>
-	$r = preg_match('/^STAT\sitems\:(\d+)\:/', $l, $m);
-	if ($r != 1)
-	{
-		return -3;
-	}
-	$a_slab = $m[1];
+								if (!array_key_exists($a_slab, $slab)) {
+									$slab[$a_slab] = [];
+								}
+							}
+						}
 
-	if (!array_key_exists($a_slab, $slab))
-	{
-		$slab[$a_slab] = [];
-	}
-}
 
-reset($slab);
-foreach ($slab as $a_slab_key => &$a_slab)
-{
-	$r = @fwrite($mem, 'stats cachedump ' . $a_slab_key . ' 100000' . chr(10));
-	if ($r === false)
-	{
-		return -4;
-	}
+						reset($slab);
 
-	while (($l = @fgets($mem, 1024)) !== false)
-	{
-		// finished?
-		$l = trim($l);
-		if ($l == 'END')
-		{
-			break;
-		}
+						foreach ($slab as $a_slab_key => &$a_slab) {
+							$r = @fwrite($mem, 'stats cachedump '.$a_slab_key.' 1000'.chr(10));
+							if ($r !== false) {
+								while (($l = @fgets($mem, 1024)) !== false) {
+									// finished?
+									$l = trim($l);
+									if ($l == 'END') {
+										break 1;
+									}
 
-		$m = [];
-		// ITEM 42 [118 b; 1354717302 s]
-		$r = preg_match('/^ITEM\s([^\s]+)\s/', $l, $m);
-		if ($r != 1)
-		{
-			return -5;
-		}
-		$a_key = $m[1];
+									$m = [];
+									// ITEM 42 [118 b; 1354717302 s]
+									$r = preg_match('/^ITEM\s([^\s]+)\s/', $l, $m);
+									if ($r == 1) {
+										$a_key = $m[1];
 
-		$a_slab[] = $a_key;
-	}
-}
+										$a_slab[] = $a_key;
+									}
+								}
+							}
+						}
 
-// close the connection
-@fclose($mem);
-unset($mem);
+						// close the connection
+						@fclose($mem);
+						unset($mem);
 
-reset($slab);
-foreach ($slab AS &$a_slab)
-{
-	reset($a_slab);
-	foreach ($a_slab AS &$a_key)
-	{
-			if(substr($a_key, 0, strlen($key)) === $key){
-				$entries[] = $a_key;
-			}
-	}
-}
-unset($slab);
 
+						reset($slab);
+						foreach ($slab as &$a_slab) {
+							reset($a_slab);
+							foreach ($a_slab as &$a_key) {
+								if (substr($a_key, 0, strlen($key)) === $key) {
+									$entries[] = $a_key;
+								}
+							}
+						}
+						unset($slab);
+					}
+				}
 
 
 
