@@ -3,7 +3,7 @@
 if(!class_exists("CACHE")){
 	class CACHE{
 #####################################################################################################################
-		const VERSION = "1.7";
+		const VERSION = "1.8";
 
 		public static $config = [
 			"path" 				=> __DIR__."/cache/storage/",
@@ -209,6 +209,11 @@ if(!class_exists("CACHE")){
 
 
 			if(self::$config["use.memcached"] !== false){
+				$allKeys = self::$memcached->get(self::validateKey("/:::KEYS"));
+				$allKeys = is_array($allKeys) ? $allKeys : [];
+				$allKeys[$key] = null;
+				self::$memcached->set(self::validateKey("/:::KEYS"), $allKeys, time()+60*60*24*365);
+
 				return self::$memcached->set($key, $value, $time);
 			}
 
@@ -237,6 +242,11 @@ if(!class_exists("CACHE")){
 
 
 			if(self::$config["use.memcached"] !== false){
+				$allKeys = self::$memcached->get(self::validateKey("/:::KEYS"));
+				$allKeys = is_array($allKeys) ? $allKeys : [];
+				$allKeys[$key] = null;
+				self::$memcached->set(self::validateKey("/:::KEYS"), $allKeys, time()+60*60*24*365);
+
 				return self::$memcached->add($key, $value, $time);
 			}
 
@@ -288,24 +298,6 @@ if(!class_exists("CACHE")){
 			$key 	= self::validateKey("");
 
 			if(self::$config["use.memcached"] !== false){
-				foreach(self::$memcached->getMulti([$key], \Memcached::GET_PRESERVE_ORDER) as $entry){
-					if(substr($entry, 0, strlen($key)) === $key){
-						$entries[] = $entry;
-					}
-				}
-
-				foreach(self::$memcached->getAllKeys() as $entry){
-					if(substr($entry, 0, strlen($key)) === $key){
-						$entries[] = $entry;
-					}
-				}
-
-				foreach(self::$memcached->getMulti([$key], \Memcached::GET_PRESERVE_ORDER) as $entry){
-					if(substr($entry, 0, strlen($key)) === $key){
-						$entries[] = $entry;
-					}
-				}
-
 				foreach(self::$memcached->getAllKeys() as $entry){
 					if(substr($entry, 0, strlen($key)) === $key){
 						$entries[] = $entry;
@@ -313,81 +305,32 @@ if(!class_exists("CACHE")){
 				}
 
 
-
-				$mem = @fsockopen(self::$config["memcached.host"], self::$config["memcached.port"]);
-				if ($mem !== false) {
-					// retrieve distinct slab
-					$r = @fwrite($mem, 'stats items'.chr(10));
-					if ($r !== false) {
-						$slab = [];
-						while (($l = @fgets($mem, 1024)) !== false) {
-							// finished?
-							$l = trim($l);
-							if ($l == 'END') {
-								break;
-							}
-
-							$m = [];
-							// <STAT items:22:evicted_nonzero 0>
-							$r = preg_match('/^STAT\sitems\:(\d+)\:/', $l, $m);
-							if ($r == 1) {
-								$a_slab = $m[1];
-
-								if (!array_key_exists($a_slab, $slab)) {
-									$slab[$a_slab] = [];
-								}
-							}
+				$req = self::$memcached->get(self::validateKey("/:::KEYS"));
+				foreach($req as $entry => $value){
+					if(substr($entry, 0, strlen($key)) === $key){
+						if(self::has($entry) === true){
+							$entries[] = $entry;
+						} else{
+							$allKeys = self::$memcached->get(self::validateKey("/:::KEYS"));
+							$allKeys = is_array($allKeys) ? $allKeys : [];
+							unset($allKeys[$entry]);
+							self::$memcached->set(self::validateKey("/:::KEYS"), $allKeys, time()+60*60*24*365);
 						}
-
-
-						reset($slab);
-
-						foreach ($slab as $a_slab_key => &$a_slab) {
-							$r = @fwrite($mem, 'stats cachedump '.$a_slab_key.' 1000'.chr(10));
-							if ($r !== false) {
-								while (($l = @fgets($mem, 1024)) !== false) {
-									// finished?
-									$l = trim($l);
-									if ($l == 'END') {
-										break 1;
-									}
-
-									$m = [];
-									// ITEM 42 [118 b; 1354717302 s]
-									$r = preg_match('/^ITEM\s([^\s]+)\s/', $l, $m);
-									if ($r == 1) {
-										$a_key = $m[1];
-
-										$a_slab[] = $a_key;
-									}
-								}
-							}
-						}
-
-						// close the connection
-						@fclose($mem);
-						unset($mem);
-
-
-						reset($slab);
-						foreach ($slab as &$a_slab) {
-							reset($a_slab);
-							foreach ($a_slab as &$a_key) {
-								if (substr($a_key, 0, strlen($key)) === $key) {
-									$entries[] = $a_key;
-								}
-							}
-						}
-						unset($slab);
 					}
 				}
-
 
 
 				if(is_array($entries)){
 					$entries = array_unique($entries);
 					natsort($entries);
 				}
+
+
+				if(isset($_GET["cache-debug"])){
+					var_dump(self::$memcached->get(self::validateKey("/:::KEYS")));
+					die;
+				}
+
 
 				return is_array($entries) ? $entries : [];
 			}
@@ -437,12 +380,23 @@ if(!class_exists("CACHE")){
 					foreach(self::findKeys($key) as $entry){
 						$entries[] = $entry;
 						self::$memcached->delete($entry);
+
+						$allKeys = self::$memcached->get(self::validateKey("/:::KEYS"));
+						$allKeys = is_array($allKeys) ? $allKeys : [];
+						unset($allKeys[$entry]);
+						self::$memcached->set(self::validateKey("/:::KEYS"), $allKeys, time()+60*60*24*365);
 					}
 
 					return is_array($entries) ? $entries : [];
 				}
 				else{
 					$key = self::validateKey($key);
+
+					$allKeys = self::$memcached->get(self::validateKey("/:::KEYS"));
+					$allKeys = is_array($allKeys) ? $allKeys : [];
+					unset($allKeys[$key]);
+					self::$memcached->set(self::validateKey("/:::KEYS"), $allKeys, time()+60*60*24*365);
+
 					return self::$memcached->delete($key);
 				}
 			}
